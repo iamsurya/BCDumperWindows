@@ -17,31 +17,41 @@ namespace FirstApp
 {
     public partial class Form1 : Form
     {
+        /* Timer and Background Variables */
         uint TimerCtr = 0;
         uint TotalTime = 0;
-        uint READINGSPERPAGE = 170;
-        uint READINGS = 6;
         Thread t;
         ManualResetEvent runThread = new ManualResetEvent(false);
-        
-        uint NumReceived = 0;
-        ushort NumToReceive = 0;
-        uint NumToRXInt = 0;
-        string DumpFileName;
         DateTime DTRightNow;
-        TimeSpan ETALeft;
-        string SaveDefaultDirectory;
+        DateTime Genesis = new DateTime(2015, 1, 1);
+        
+
+
+        /* Variables for Serial Data Read Setup */
+        uint READINGSPERPAGE = 170;                         // Number of readings per page. For AT45DB642D this is 170.
+        uint READINGS = 6;                                  // Number of Sensors. This is 6.
+        ushort NumToReceive = 0;                            // Number that the device sends to us.
+        uint NumToRXInt = 0;                                // Calculated Number of bytes that we have to RX = 170 * 6 * NumReceived
+        string DumpFileName;                                // Name of file where data is dropped. This is generated from current time.
+        string SaveDefaultDirectory;                        // Default Directory where file is dropped. Used for dialog box.
+        bool Command = false;                               // 1 after a "Send Data" command is sent to device, then reset to 0.
+        SerialPort ComPort1 = new SerialPort("COM5", 115200); // Serial Port for communication.
+
+        /* Variables for Serial Data Read Progress */
+        uint NumReceived = 0;                               // Actual Number of bytes RX at time t.
+        TimeSpan ETALeft;                                   // Calculated time left for transfer to complete.
+        uint PBValue = 0;                                   // Progress bar percentage. Needs to be int.
+
+
+        /* Variables for Syncting Time with device */
+        byte[] TimeStamp = new byte[4];                     // TimeStamp buffer to send to device (or receive).
+        TimeSpan TimeStampSpan;                             // Used to calculate time between Jan 1,2015 and right now.
+        UInt32 TimeStamp32;                                 // 32 bit variable to store the seconds between now and Jan 1,2015
+
+        
         /* Create a Stream to write to File */
-        BinaryWriter b;
-        byte[] Buffer = new byte[4];
-
-        bool Command = false;
-
-        uint PBValue = 0;
-
-        /* Create a serial port */
-        SerialPort ComPort1 = new SerialPort("COM5", 115200);
-
+        BinaryWriter b;                                     // Object to write to a file.
+        byte[] Buffer = new byte[4];                        // Receives metadata from device.
 
         private void ReceiveThread()
         {
@@ -70,7 +80,7 @@ namespace FirstApp
                                 return;
                             }
                         NumToReceive = (ushort)(((ushort)Buffer[1] << 8) + (ushort)Buffer[0]);
-                        NumToRXInt = ((uint)NumToReceive * (READINGSPERPAGE) * READINGS);
+                        NumToRXInt = ((uint)NumToReceive * (READINGSPERPAGE) * READINGS) + 12; // 12 is the number of chars in START\n and ENDDAT
                         //lblToRX.Parent.Invoke((MethodInvoker)delegate { lblToRX.Text = NumToRXInt.ToString(); });
                         
 
@@ -86,20 +96,14 @@ namespace FirstApp
 
                             PBValue = (uint)(((double)NumReceived / (double)NumToRXInt) * (double)100);
                             
-                            //progressBar1.Parent.Invoke((MethodInvoker)delegate{ progressBar1.Value = (int) PBValue; });
-
-                            //lblRX.Parent.Invoke((MethodInvoker)delegate
-                            //{
-                            //    lblRX.Text = NumReceived.ToString();
-
-                            //});
+                            
 
 
                             if(NumReceived > (NumToRXInt-1) )
                             {
                                 try
                                 {
-                                    //Debug.WriteLine(TotalTime.ToString());
+                                   
                                     ComPort1.Close();
                                     b.Close();
                                     lblStat.Parent.Invoke((MethodInvoker)delegate {
@@ -108,7 +112,7 @@ namespace FirstApp
                                     
                                     });
                                     
-                                    //lblStat.Parent.Invoke((MethodInvoker)delegate { lblETA.Text = TotalTime.ToString(); });
+                                 
                                     
                                 }
                                 catch (Exception ex)
@@ -119,8 +123,7 @@ namespace FirstApp
                             }
 
                         }
-                        /* Store data */
-                        //                        this.Invoke(this.m_DelegateAddToList, new Object[] { "R: " + msg });
+                       
                     }
 
                     catch(Exception ex)
@@ -136,15 +139,22 @@ namespace FirstApp
             }
         }
 
+        private void SyncReceiveThread()
+    {
+
+
+    }
 
         public Form1()
         {
             InitializeComponent();
 
-
-            t = new Thread(ReceiveThread);
-            t.Start();
-            
+            CmbPorts.Items.Clear();
+            string[] ports = SerialPort.GetPortNames();
+            foreach (string port in ports)
+            {
+                CmbPorts.Items.Add(port);
+            }
         }
 
         
@@ -185,7 +195,11 @@ namespace FirstApp
 
         private void BtnDump_Click(object sender, EventArgs e)
         {
-
+            
+            ComPort1.PortName = CmbPorts.Text;
+            t = new Thread(ReceiveThread);
+            t.Start();
+            
             try
                 {
                     ComPort1.Open();
@@ -223,6 +237,10 @@ namespace FirstApp
 
             /* The "Send Data" sd command */
             ComPort1.Write("sd");
+            Thread.Sleep(200);
+            ComPort1.Write("ab");
+            Thread.Sleep(200);
+            ComPort1.Write("cd");
             Command = true;
             runThread.Set();
             lblStat.Parent.Invoke((MethodInvoker)delegate { lblStat.Text = "Command Sent"; lblStat.ForeColor = Color.Green; });
@@ -231,17 +249,30 @@ namespace FirstApp
             
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void lblFileName_Click(object sender, EventArgs e)
         {
-            //b.Close();
+            System.Diagnostics.Process.Start((SaveDefaultDirectory + DumpFileName));
+        }
+
+        private void BtnListPorts_Click(object sender, EventArgs e)
+        {
+            CmbPorts.Items.Clear();
+            string[] ports = SerialPort.GetPortNames();
+            foreach (string port in ports)
+            {
+                CmbPorts.Items.Add(port);
+            }
+        }
+
+        private void btnStopDump(object sender, EventArgs e)
+        {
             try
             {
-                
+                t.Abort();
                 ComPort1.Close();
                 b.Close();
-                t.Abort();
-                t = new Thread(ReceiveThread);
-                t.Start();
+
+
                 lblStat.Text = "File and Stream Closed \n";
                 lblStat.ForeColor = Color.YellowGreen;
             }
@@ -252,10 +283,53 @@ namespace FirstApp
             }
         }
 
-        private void lblFileName_Click(object sender, EventArgs e)
+        private void btnTimeSync_Click(object sender, EventArgs e)
         {
-            System.Diagnostics.Process.Start((SaveDefaultDirectory + DumpFileName));
+            ComPort1.PortName = CmbPorts.Text;
+            t = new Thread(ReceiveThread);
+            t.Start();
+
+
+            try
+            {
+                ComPort1.Open();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+
+            /* Get the current Data and Time to use to sync */
+            DTRightNow = DateTime.Now;
+            TimeStampSpan = DTRightNow - Genesis;
+            TimeStamp32 = (UInt32)TimeStampSpan.TotalSeconds;
+            TimeStamp[0] = (byte)(TimeStamp32 & 0x000000FF);
+            TimeStamp[1] = (byte)((TimeStamp32 >> 8) & 0x000000FF);
+            TimeStamp[2] = (byte)((TimeStamp32 >> 16) & 0x000000FF);
+            TimeStamp[3] = (byte)((TimeStamp32 >> 24) & 0x000000FF);
+            
+            
+            /* The Time synC "TC" command */
+            ComPort1.Write("TC");
+            ComPort1.Write(TimeStamp, 0, 4);
+
+
+            lblStat.Text = "Time Sent " + TimeStamp32.ToString() ; lblStat.ForeColor = Color.Green;
+            lblTXPercent.Text = TimeStamp32.ToString("X");
+            try { ComPort1.Close(); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            t.Abort();
         }
+
+
+        
 
 
     }
