@@ -45,6 +45,7 @@
             this.btnTimeSync = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
+            this.btnCheckTime = new System.Windows.Forms.Button();
             serialPort1 = new System.IO.Ports.SerialPort(this.components);
             this.SuspendLayout();
             // 
@@ -52,7 +53,7 @@
             // 
             this.lblStat.AutoSize = true;
             this.lblStat.ForeColor = System.Drawing.Color.Red;
-            this.lblStat.Location = new System.Drawing.Point(190, 173);
+            this.lblStat.Location = new System.Drawing.Point(120, 173);
             this.lblStat.Name = "lblStat";
             this.lblStat.Size = new System.Drawing.Size(43, 13);
             this.lblStat.TabIndex = 0;
@@ -61,7 +62,7 @@
             // lblTXPercent
             // 
             this.lblTXPercent.AutoSize = true;
-            this.lblTXPercent.Location = new System.Drawing.Point(190, 201);
+            this.lblTXPercent.Location = new System.Drawing.Point(120, 201);
             this.lblTXPercent.Name = "lblTXPercent";
             this.lblTXPercent.Size = new System.Drawing.Size(21, 13);
             this.lblTXPercent.TabIndex = 1;
@@ -181,11 +182,22 @@
             this.label2.TabIndex = 13;
             this.label2.Text = "Transfer Percentage";
             // 
+            // btnCheckTime
+            // 
+            this.btnCheckTime.Location = new System.Drawing.Point(193, 260);
+            this.btnCheckTime.Name = "btnCheckTime";
+            this.btnCheckTime.Size = new System.Drawing.Size(75, 23);
+            this.btnCheckTime.TabIndex = 14;
+            this.btnCheckTime.Text = "Check Time";
+            this.btnCheckTime.UseVisualStyleBackColor = true;
+            this.btnCheckTime.Click += new System.EventHandler(this.button2_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(434, 295);
+            this.Controls.Add(this.btnCheckTime);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.btnTimeSync);
@@ -224,6 +236,7 @@
         private System.Windows.Forms.Button btnTimeSync;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Button btnCheckTime;
     }
 }
 

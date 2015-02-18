@@ -21,6 +21,7 @@ namespace FirstApp
         uint TimerCtr = 0;
         uint TotalTime = 0;
         Thread t;
+        bool EndThread = false; /* True = End Thread Executaion */
         ManualResetEvent runThread = new ManualResetEvent(false);
         DateTime DTRightNow;
         DateTime Genesis = new DateTime(2015, 1, 1);
@@ -47,7 +48,7 @@ namespace FirstApp
         byte[] TimeStamp = new byte[4];                     // TimeStamp buffer to send to device (or receive).
         TimeSpan TimeStampSpan;                             // Used to calculate time between Jan 1,2015 and right now.
         UInt32 TimeStamp32;                                 // 32 bit variable to store the seconds between now and Jan 1,2015
-
+        UInt32 RXTimeStamp32;
         
         /* Create a Stream to write to File */
         BinaryWriter b;                                     // Object to write to a file.
@@ -139,12 +140,112 @@ namespace FirstApp
             }
         }
 
-        private void SyncReceiveThread()
+        private void TimeSyncReceiveThread()
     {
+            Debug.WriteLine("TimeSync Thread (Re)Started");
+            while (!EndThread)
+            {
+                runThread.WaitOne(Timeout.Infinite);
 
+                while (!EndThread)
+                {
+                    try
+                    {
+                        // receive data 
+                        Buffer[0] = (byte)ComPort1.ReadByte();
+                        Buffer[1] = (byte)ComPort1.ReadByte();
+                        Buffer[2] = (byte)ComPort1.ReadByte();
+                        Buffer[3] = (byte)ComPort1.ReadByte();
+
+                        RXTimeStamp32 = ((UInt32)Buffer[0]) + (((UInt32)Buffer[1]) << 8) + (((UInt32)Buffer[2]) << 16) + (((UInt32)Buffer[3]) << 24);
+
+                        ComPort1.Close();
+
+                        if (TimeStamp32 == RXTimeStamp32)
+                        {
+                            lblStat.Parent.Invoke((MethodInvoker)delegate
+                            {
+                                lblStat.Text = "Time Synced Correctly";
+                                lblStat.ForeColor = Color.Green;
+
+                            });
+                        }
+                        else
+                        {
+                            lblStat.Parent.Invoke((MethodInvoker)delegate
+                            {
+                                lblStat.Text = "Time Sync Failed, Try Again";
+                                lblStat.ForeColor = Color.Red;
+
+                            });
+                        }
+                        EndThread = true;
+                    }
+                    
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Sync Thead error : "+ ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        runThread.Reset();
+                        break;
+                    }
+
+                    
+
+                }
+                
+            }
 
     }
 
+        private void CheckTimeRXThread()
+        {
+            Debug.WriteLine("CheckTime Thread (Re)Started");
+            while (!EndThread)
+            {
+                runThread.WaitOne(Timeout.Infinite);
+
+                while (!EndThread)
+                {
+                    try
+                    {
+                        // receive data 
+                        Buffer[0] = (byte)ComPort1.ReadByte();
+                        Buffer[1] = (byte)ComPort1.ReadByte();
+                        Buffer[2] = (byte)ComPort1.ReadByte();
+                        Buffer[3] = (byte)ComPort1.ReadByte();
+
+                        RXTimeStamp32 = ((UInt32)Buffer[0]) + (((UInt32)Buffer[1]) << 8) + (((UInt32)Buffer[2]) << 16) + (((UInt32)Buffer[3]) << 24);
+
+                        
+                        DTRightNow = Genesis.AddSeconds(RXTimeStamp32);
+
+                        ComPort1.Close();
+
+                    
+                            lblStat.Parent.Invoke((MethodInvoker)delegate
+                            {
+                                lblStat.Text = "Time Received: " + DTRightNow.ToString() ;
+                                lblStat.ForeColor = Color.Green;
+
+                            });
+                       
+                        EndThread = true;
+                    }
+
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Sync Thead error : " + ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        runThread.Reset();
+                        break;
+                    }
+
+
+
+                }
+
+            }
+
+        }
         public Form1()
         {
             InitializeComponent();
@@ -286,21 +387,24 @@ namespace FirstApp
         private void btnTimeSync_Click(object sender, EventArgs e)
         {
             ComPort1.PortName = CmbPorts.Text;
-            t = new Thread(ReceiveThread);
-            t.Start();
-
-
             try
             {
                 ComPort1.Open();
+                ComPort1.DiscardInBuffer();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Button Click Event error: "+ ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+            t = new Thread(TimeSyncReceiveThread);
+            EndThread = false;
+            t.Start();
 
 
+
+
+            
             /* Get the current Data and Time to use to sync */
             DTRightNow = DateTime.Now;
             TimeStampSpan = DTRightNow - Genesis;
@@ -309,23 +413,51 @@ namespace FirstApp
             TimeStamp[1] = (byte)((TimeStamp32 >> 8) & 0x000000FF);
             TimeStamp[2] = (byte)((TimeStamp32 >> 16) & 0x000000FF);
             TimeStamp[3] = (byte)((TimeStamp32 >> 24) & 0x000000FF);
-            
-            
+
+            Buffer[0] = 0;
+            Buffer[1] = 0;
+            Buffer[2] = 0;
+            Buffer[3] = 0;
+
+            runThread.Set();  
             /* The Time synC "TC" command */
             ComPort1.Write("TC");
             ComPort1.Write(TimeStamp, 0, 4);
+            
 
+            
+            // lblTXPercent.Text = TimeStamp32.ToString("X");
+            
+            
+        }
 
-            lblStat.Text = "Time Sent " + TimeStamp32.ToString() ; lblStat.ForeColor = Color.Green;
-            lblTXPercent.Text = TimeStamp32.ToString("X");
-            try { ComPort1.Close(); }
+        private void button2_Click(object sender, EventArgs e)
+        {
+            ComPort1.PortName = CmbPorts.Text;
+            try
+            {
+                ComPort1.Open();
+                ComPort1.DiscardInBuffer();
+            }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Button Click Event error: " + ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+            t = new Thread(CheckTimeRXThread);
+            EndThread = false;
+            t.Start();
 
-            t.Abort();
+            /* Send 4 bytes to complete command */
+            Buffer[0] = 0;
+            Buffer[1] = 0;
+            Buffer[2] = 0;
+            Buffer[3] = 0;
+
+            runThread.Set();
+            /* The Time synC "TC" command */
+            ComPort1.Write("CT");
+            ComPort1.Write(Buffer, 0, 4);
         }
 
 
