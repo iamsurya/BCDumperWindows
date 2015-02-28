@@ -46,6 +46,7 @@
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.btnCheckTime = new System.Windows.Forms.Button();
+            this.btnTSData = new System.Windows.Forms.Button();
             serialPort1 = new System.IO.Ports.SerialPort(this.components);
             this.SuspendLayout();
             // 
@@ -94,7 +95,7 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(211, 116);
+            this.button1.Location = new System.Drawing.Point(270, 117);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(134, 23);
             this.button1.TabIndex = 4;
@@ -190,13 +191,24 @@
             this.btnCheckTime.TabIndex = 14;
             this.btnCheckTime.Text = "Check Time";
             this.btnCheckTime.UseVisualStyleBackColor = true;
-            this.btnCheckTime.Click += new System.EventHandler(this.button2_Click);
+            this.btnCheckTime.Click += new System.EventHandler(this.btnCheckTime_Click);
+            // 
+            // btnTSData
+            // 
+            this.btnTSData.Location = new System.Drawing.Point(143, 117);
+            this.btnTSData.Name = "btnTSData";
+            this.btnTSData.Size = new System.Drawing.Size(98, 23);
+            this.btnTSData.TabIndex = 15;
+            this.btnTSData.Text = "Dump TS Data";
+            this.btnTSData.UseVisualStyleBackColor = true;
+            this.btnTSData.Click += new System.EventHandler(this.btnTSData_Click);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(434, 295);
+            this.Controls.Add(this.btnTSData);
             this.Controls.Add(this.btnCheckTime);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
@@ -213,7 +225,7 @@
             this.Controls.Add(this.lblTXPercent);
             this.Controls.Add(this.lblStat);
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "Wrist Comm";
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -237,6 +249,7 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button btnCheckTime;
+        private System.Windows.Forms.Button btnTSData;
     }
 }
 

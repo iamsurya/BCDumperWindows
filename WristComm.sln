@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirstApp", "FirstApp\FirstApp.csproj", "{ADCDE3D6-2AAF-49EF-A1F9-D60883E7E8C2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WristComm", "FirstApp\WristComm.csproj", "{ADCDE3D6-2AAF-49EF-A1F9-D60883E7E8C2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

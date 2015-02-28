@@ -24,6 +24,7 @@ namespace FirstApp
         bool EndThread = false; /* True = End Thread Executaion */
         ManualResetEvent runThread = new ManualResetEvent(false);
         DateTime DTRightNow;
+        DateTime ReceivedDT;
         DateTime Genesis = new DateTime(2015, 1, 1);
         
 
@@ -38,6 +39,8 @@ namespace FirstApp
         bool Command = false;                               // 1 after a "Send Data" command is sent to device, then reset to 0.
         SerialPort ComPort1 = new SerialPort("COM5", 115200); // Serial Port for communication.
 
+
+        
         /* Variables for Serial Data Read Progress */
         uint NumReceived = 0;                               // Actual Number of bytes RX at time t.
         TimeSpan ETALeft;                                   // Calculated time left for transfer to complete.
@@ -50,10 +53,11 @@ namespace FirstApp
         UInt32 TimeStamp32;                                 // 32 bit variable to store the seconds between now and Jan 1,2015
         UInt32 RXTimeStamp32;
         
+
         /* Create a Stream to write to File */
         BinaryWriter b;                                     // Object to write to a file.
         byte[] Buffer = new byte[4];                        // Receives metadata from device.
-
+        TextWriter TSWriter;
         private void ReceiveThread()
         {
             Debug.WriteLine("Debug Thread (Re)Started");
@@ -72,7 +76,7 @@ namespace FirstApp
                             Buffer[3] = (byte)ComPort1.ReadByte();
                             Buffer[0] = (byte)ComPort1.ReadByte();
                             Buffer[1] = (byte)ComPort1.ReadByte();
-
+                            Debug.WriteLine(Buffer[0].ToString("X") + Buffer[1].ToString("X"));
                             if((Buffer[2] != 'n') || (Buffer[3] != 'c'))
                             {
                                 ComPort1.Close();
@@ -81,7 +85,7 @@ namespace FirstApp
                                 return;
                             }
                         NumToReceive = (ushort)(((ushort)Buffer[1] << 8) + (ushort)Buffer[0]);
-                        NumToRXInt = ((uint)NumToReceive * (READINGSPERPAGE) * READINGS) + 12; // 12 is the number of chars in START\n and ENDDAT
+                        NumToRXInt = (((uint)NumToReceive) * (READINGSPERPAGE) * READINGS) + (uint)12; // 12 is the number of chars in START\n and ENDDAT
                         //lblToRX.Parent.Invoke((MethodInvoker)delegate { lblToRX.Text = NumToRXInt.ToString(); });
                         
 
@@ -197,6 +201,86 @@ namespace FirstApp
 
     }
 
+
+        private void DumpTSDataRXThread()
+        {
+            Debug.WriteLine("Debug Thread (Re)Started");
+            while (!EndThread)
+            {
+                runThread.WaitOne(Timeout.Infinite);
+
+                while (!EndThread)
+                {
+                    try
+                    {
+                        
+
+                            Buffer[0] = (byte)ComPort1.ReadByte();
+                            Buffer[1] = (byte)ComPort1.ReadByte();
+                            Buffer[2] = (byte)ComPort1.ReadByte();
+                            Buffer[3] = (byte)ComPort1.ReadByte();
+
+                            /* Create the Received Time Stamp */
+                            RXTimeStamp32 = ((UInt32)Buffer[0]) + (((UInt32)Buffer[1]) << 8) + (((UInt32)Buffer[2]) << 16) + (((UInt32)Buffer[3]) << 24);
+                    }
+                    catch (Exception ex)
+                        {
+                            MessageBox.Show("Thread Read Error: "+ ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                    try{
+
+                            ReceivedDT = Genesis.AddSeconds(RXTimeStamp32);
+                            TSWriter.WriteLine(ReceivedDT.ToString(""));
+                            Debug.WriteLine(RXTimeStamp32.ToString());
+                            Debug.WriteLine(ReceivedDT.ToString());
+                            TimerCtr = 0;
+                            NumReceived++;
+                            
+
+
+                            if(NumReceived == NumToRXInt )
+                            {
+                                try
+                                {
+                                   
+                                    ComPort1.Close();
+                                    lblStat.Parent.Invoke((MethodInvoker)delegate {
+                                                lblStat.Text = "TimeDump Finished, File and Stream Closed";
+                                                lblStat.ForeColor = Color.Green;
+                                                
+                                    });
+                                    TSWriter.Flush();
+                                    TSWriter.Close();
+                                    EndThread = true;
+                                 
+                                    
+                                }
+                                catch (Exception ex)
+                                {
+                                    MessageBox.Show("Thread Close Error: "+ ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    return;
+                                }
+                            }
+
+                        
+                       
+                    }
+
+                    catch(Exception ex)
+                    {
+                        Debug.WriteLine("Caught " + ex.Message);
+                        runThread.Reset();
+                        break;
+                    }
+
+                    
+
+                }
+            }
+        }
+
+
         private void CheckTimeRXThread()
         {
             Debug.WriteLine("CheckTime Thread (Re)Started");
@@ -213,22 +297,42 @@ namespace FirstApp
                         Buffer[1] = (byte)ComPort1.ReadByte();
                         Buffer[2] = (byte)ComPort1.ReadByte();
                         Buffer[3] = (byte)ComPort1.ReadByte();
-
+                        RXTimeStamp32 = 99;
+                        /* Create the Received Time Stamp */
                         RXTimeStamp32 = ((UInt32)Buffer[0]) + (((UInt32)Buffer[1]) << 8) + (((UInt32)Buffer[2]) << 16) + (((UInt32)Buffer[3]) << 24);
 
-                        
-                        DTRightNow = Genesis.AddSeconds(RXTimeStamp32);
+                        /* Create the Current Time Stamp */
+                        DTRightNow = DateTime.Now;
+                        TimeStampSpan = DTRightNow - Genesis;
+                        TimeStamp32 = (UInt32)TimeStampSpan.TotalSeconds;
 
-                        ComPort1.Close();
-
-                    
+                        if (TimeStamp32 == RXTimeStamp32)
+                        {
                             lblStat.Parent.Invoke((MethodInvoker)delegate
-                            {
-                                lblStat.Text = "Time Received: " + DTRightNow.ToString() ;
-                                lblStat.ForeColor = Color.Green;
+                            { lblStat.ForeColor = Color.Green; });
+                        }
+                        else if((RXTimeStamp32 < (TimeStamp32 + 2)) && (RXTimeStamp32 > (TimeStamp32 - 2)))
+                        {
+                            lblStat.Parent.Invoke((MethodInvoker)delegate
+                            { lblStat.ForeColor = Color.Orange; });
+                        }
+                        else
+                        {
+                            lblStat.Parent.Invoke((MethodInvoker)delegate
+                            { lblStat.ForeColor = Color.Red; });
+                        }
 
-                            });
-                       
+                        ReceivedDT = Genesis.AddSeconds(RXTimeStamp32);
+                        
+                        
+                        ComPort1.Close();
+                        
+                    if(RXTimeStamp32 != 0)
+                            lblStat.Parent.Invoke((MethodInvoker)delegate
+                            { lblStat.Text = "Device Time " + ReceivedDT.ToString(); });
+                    else
+                        lblStat.Parent.Invoke((MethodInvoker)delegate
+                        { lblStat.Text = "Device Time not synced yet"; });
                         EndThread = true;
                     }
 
@@ -431,7 +535,50 @@ namespace FirstApp
             
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void btnTSData_Click(object sender, EventArgs e)
+        {
+            ComPort1.PortName = CmbPorts.Text;
+            try
+            {
+                ComPort1.Open();
+                ComPort1.DiscardInBuffer();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Button Click Event error: " + ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            t = new Thread(DumpTSDataRXThread);
+            EndThread = false;
+            t.Start();
+
+            /* Get the current Data and Time to use for filename */
+            DTRightNow = DateTime.Now;
+
+            DumpFileName = "WR_"+DTRightNow.Year.ToString() + "_" + DTRightNow.Month.ToString() + "_" + DTRightNow.Day.ToString() + "T" + DTRightNow.Hour.ToString() + "_" + DTRightNow.Minute.ToString() + "_" + DTRightNow.Second.ToString() + ".wrts";
+
+            SaveDefaultDirectory = "C:\\Users\\Surya\\Dropbox\\Education\\BiteCounter\\WristData Dump\\NewAppDump\\";
+
+
+            lblFileName.Text = DumpFileName;
+
+            TSWriter = File.CreateText(SaveDefaultDirectory+DumpFileName);
+
+
+            /* Send 3 bytes to complete command */
+            Buffer[0] = 0;
+            Buffer[1] = 0;
+            Buffer[2] = 0;
+            Buffer[3] = 0;
+            NumReceived = 0;
+            NumToRXInt = 32; // 32 entries * 4 bytes each.
+            runThread.Set();
+            /* Command for Sending TimeStamp Data */
+            ComPort1.Write("DsT");
+            ComPort1.Write(Buffer, 0, 3);
+        }
+
+        private void btnCheckTime_Click(object sender, EventArgs e)
         {
             ComPort1.PortName = CmbPorts.Text;
             try
