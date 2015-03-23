@@ -231,7 +231,7 @@ namespace FirstApp
                     try{
 
                             ReceivedDT = Genesis.AddSeconds(RXTimeStamp32);
-                            TSWriter.WriteLine(ReceivedDT.ToString(""));
+                            TSWriter.WriteLine(ReceivedDT.ToString("yyyy-MM-dd\tH:mm:ss"));
                             Debug.WriteLine(RXTimeStamp32.ToString());
                             Debug.WriteLine(ReceivedDT.ToString());
                             TimerCtr = 0;
@@ -426,7 +426,7 @@ namespace FirstApp
 
             DumpFileName = DTRightNow.Year.ToString() + "_" + DTRightNow.Month.ToString() + "_" + DTRightNow.Day.ToString() + "T" + DTRightNow.Hour.ToString() + "_" + DTRightNow.Minute.ToString() + "_" + DTRightNow.Second.ToString() + ".wrdt";
 
-            SaveDefaultDirectory = "C:\\Users\\Surya\\Dropbox\\Education\\BiteCounter\\WristData Dump\\NewAppDump\\";
+            SaveDefaultDirectory = "C:\\Users\\Surya\\Dropbox\\Education\\BiteCounter\\NewAppDump\\";
 
         
             lblFileName.Text = DumpFileName;
@@ -557,7 +557,7 @@ namespace FirstApp
 
             DumpFileName = "WR_"+DTRightNow.Year.ToString() + "_" + DTRightNow.Month.ToString() + "_" + DTRightNow.Day.ToString() + "T" + DTRightNow.Hour.ToString() + "_" + DTRightNow.Minute.ToString() + "_" + DTRightNow.Second.ToString() + ".wrts";
 
-            SaveDefaultDirectory = "C:\\Users\\Surya\\Dropbox\\Education\\BiteCounter\\WristData Dump\\NewAppDump\\";
+            SaveDefaultDirectory = "C:\\Users\\Surya\\Dropbox\\Education\\BiteCounter\\NewAppDump\\";
 
 
             lblFileName.Text = DumpFileName;
